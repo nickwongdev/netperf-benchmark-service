@@ -1,0 +1,40 @@
+buildscript {
+	repositories {
+		mavenCentral()
+	}
+	dependencies {
+		classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+		classpath "org.jetbrains.kotlin:kotlin-allopen:$kotlin_version"
+		classpath "org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinx_coroutines_version"
+	}
+}
+
+apply plugin: 'kotlin'
+
+group = 'com.nickwongdev.netperf'
+version = '1.0-SNAPSHOT'
+sourceCompatibility = 1.8
+
+compileKotlin {
+	kotlinOptions {
+		freeCompilerArgs = ["-Xjsr305=strict"]
+		jvmTarget = "1.8"
+	}
+}
+compileTestKotlin {
+	kotlinOptions {
+		freeCompilerArgs = ["-Xjsr305=strict"]
+		jvmTarget = "1.8"
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+	implementation "org.jetbrains.kotlin:kotlin-reflect"
+	implementation group: 'org.jetbrains.kotlinx', name: 'kotlinx-coroutines-core', version: "$kotlinx_coroutines_version"
+	testImplementation "org.junit.jupiter:junit-jupiter-api:$juint_version"
+}
