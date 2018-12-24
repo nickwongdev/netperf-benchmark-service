@@ -57,6 +57,8 @@ class WorkService {
 
     private suspend fun calcCoroutine(coroutineId: Int, calcId: Int): Int = coroutineScope {
 
+        // println("Starting work for coroutine $coroutineId and calc $calcId")
+
         var data = ""
         repeat(10) {
             data += uuidArray[Random.nextInt(0, 127)]
