@@ -29,10 +29,11 @@ class WorkService {
         val calcIterDiff = calcIterMax - calcIterMin
         val asyncValList: MutableList<Deferred<Int>> = mutableListOf()
         repeat(iter) {
-            val curWait = waitMin + Random.nextLong(0, usecDiff)
-            val curIter = Random.nextInt(1, calcIterDiff)
+            val curIter = if (calcIterDiff > 1) Random.nextInt(1, calcIterDiff) else calcIterMin
+            val curWait = if (usecDiff > 1) waitMin + Random.nextLong(0, usecDiff) else waitMin
             asyncValList.add(async { workCoroutine(it, curWait, curIter) })
         }
+
         var count = 0
         asyncValList.forEach { item -> count += item.await() }
         count
