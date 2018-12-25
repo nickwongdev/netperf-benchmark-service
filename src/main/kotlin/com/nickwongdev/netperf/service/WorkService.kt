@@ -1,76 +1,93 @@
 package com.nickwongdev.netperf.service
 
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.*
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.zip.GZIPOutputStream
 import kotlin.random.Random
+
+data class WorkContext(var workDone: Int)
+
+var counter = 0
 
 class WorkService {
 
     private val uuidArray: Array<String> = Array(128) { UUID.randomUUID().toString() }
 
     /**
-     * Async coroutine that does a set of valueless work
+     * Coroutine that launches a specified number of workSimulation coroutines.
      *
-     * @param iter How many times to iterate on the work
+     * Once per specified number of coroutines, this method:
+     * - calculates a random amount of iterations of work (within specified bounds)
+     * - calculates a random amount of wait time (within specified bounds)
+     * - launches a coroutine with those parameters
+     *
+     * @param numCoroutines How many times to iterate on the work
      * @param calcIterMin Minimum times to run algorithm per work
      * @param calcIterMax Maximum times to run algorithm per work
-     * @param waitMin Minimum usec to wait between iterations of work
-     * @param waitMax Maximum usec to wait between iterations of work
+     * @param delayMin Minimum millis to wait between iterations of work
+     * @param delayMax Maximum millis to wait between iterations of work
      */
-    suspend fun work(iter: Int, calcIterMin: Int, calcIterMax: Int, waitMin: Long, waitMax: Long): Int = coroutineScope {
+    suspend fun work(numCoroutines: Int, calcIterMin: Int, calcIterMax: Int, delayMin: Long, delayMax: Long): Int = coroutineScope {
 
-        val usecDiff = waitMax - waitMin
-        val calcIterDiff = calcIterMax - calcIterMin
-        val asyncValList: MutableList<Deferred<Int>> = mutableListOf()
-        repeat(iter) {
-            val curIter = if (calcIterDiff > 1) Random.nextInt(1, calcIterDiff) else calcIterMin
-            val curWait = if (usecDiff > 1) waitMin + Random.nextLong(0, usecDiff) else waitMin
-            asyncValList.add(async { workCoroutine(it, curWait, curIter) })
+        val calcRange = calcIterMax - calcIterMin
+        val delayRange = delayMax - delayMin
+        val count = AtomicInteger(0)
+
+        val jobs = List(numCoroutines) {
+            launch {
+                val curIter = if (calcRange > 1) Random.nextInt(calcIterMin, calcIterMax) else calcIterMin
+                val curDelay = if (delayRange > 1) delayMin + Random.nextLong(delayMin, delayMax) else delayMin
+                workSimulation(curDelay, curIter) { count.incrementAndGet() }
+            }
         }
-
-        var count = 0
-        asyncValList.forEach { item -> count += item.await() }
-        count
+        jobs.forEach { it.join() }
+        count.get()
     }
 
     /**
-     * Just some basic String manipulation and byte calculation work to waste CPU and Memory resources
+     * This coroutine:
+     * - Waits a specified amount of non-blocking time
+     * - Runs a specified number of iterations of wasteCpuAndMemory
      */
-    private suspend fun workCoroutine(coroutineId: Int, wait: Long, calcIter: Int): Int = coroutineScope {
+    private suspend fun workSimulation(wait: Long, calcIter: Int, action: suspend () -> Unit) = coroutineScope {
 
         delay(wait)
 
-        val asyncValList: MutableList<Deferred<Int>> = mutableListOf()
-        repeat(calcIter) {
-            asyncValList.add(async { calcCoroutine(coroutineId, it) })
+        runBlocking {
+            repeat(calcIter) {
+                launch {
+                    if (!wasteCpuAndMemory()) throw RuntimeException("Work did not complete successfully!")
+                    action() // Tell "action" that work has been done
+                }
+            }
         }
-
-        var count = 0
-        asyncValList.forEach { item -> count += item.await() }
-        count
     }
 
-    private suspend fun calcCoroutine(coroutineId: Int, calcId: Int): Int = coroutineScope {
+    /**
+     * Simple blocking method for wasting CPU and Memory Resources that never leaks exceptions
+     */
+    private fun wasteCpuAndMemory(): Boolean {
 
-        // println("Starting work for coroutine $coroutineId and calc $calcId")
+        try {
+            var data = ""
+            repeat(10) {
+                data += uuidArray[Random.nextInt(0, 127)]
+            }
 
-        var data = ""
-        repeat(10) {
-            data += uuidArray[Random.nextInt(0, 127)]
+            val dataString = data.toLowerCase()
+            val zip1 = zipString(dataString)
+            val zip2 = zipString(dataString)
+
+            return zip1.hashCode() == zip2.hashCode()
+        } catch (t: Throwable) {
         }
-
-        val dataString = data.toLowerCase()
-        val zip1 = zipString(dataString)
-        val zip2 = zipString(dataString)
-
-        if (zip1.hashCode() != zip2.hashCode()) throw RuntimeException("Zip HashCode does not match!")
-        1
+        return false
     }
 
     private fun zipString(input: String): String {
