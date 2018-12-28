@@ -11,17 +11,17 @@ import kotlin.system.measureTimeMillis
  */
 internal class WorkServiceTest {
 
-    private val workService = WorkService()
+	private val workService = WorkService()
 
-    @Test
-    fun work() {
-        var amountOfWork = 0
-        val timeTaken = measureTimeMillis {
-            runBlocking {
-                amountOfWork = workService.work(4, 100, 200, 100, 300)
-            }
-        }
-        println("Amount of Work: $amountOfWork in $timeTaken millis")
-        assertTrue(amountOfWork > 399)
-    }
+	@Test
+	fun work() {
+		var amountOfWork = 0
+		val timeTaken = measureTimeMillis {
+			runBlocking {
+				amountOfWork = workService.work(4, 100, 200, 100, 300)
+			}
+		}
+		println("Amount of Work: $amountOfWork in $timeTaken millis")
+		assertTrue(amountOfWork > 399)
+	}
 }
