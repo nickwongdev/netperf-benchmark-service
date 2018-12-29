@@ -3,7 +3,6 @@ package com.nickwongdev.netperf.service
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.*
@@ -11,8 +10,12 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.zip.GZIPOutputStream
 import kotlin.random.Random
 
+/**
+ * A service that generates a lot of coroutines and wastes CPU and Memory resources
+ */
 class WorkService {
 
+	/* Generate some random strings */
 	private val uuidArray: Array<String> = Array(128) { UUID.randomUUID().toString() }
 
 	/**
@@ -24,24 +27,24 @@ class WorkService {
 	 * - launches a coroutine with those parameters
 	 *
 	 * @param numCoroutines How many times to iterate on the work
-	 * @param calcIterMin Minimum times to run algorithm per work
-	 * @param calcIterMax Maximum times to run algorithm per work
+	 * @param iterMin Minimum times to run algorithm per work
+	 * @param iterMax Maximum times to run algorithm per work
 	 * @param delayMin Minimum millis to wait between iterations of work
 	 * @param delayMax Maximum millis to wait between iterations of work
 	 */
-	suspend fun work(numCoroutines: Int, calcIterMin: Int, calcIterMax: Int, delayMin: Long, delayMax: Long): Int = coroutineScope {
+	suspend fun work(numCoroutines: Int, iterMin: Int, iterMax: Int, delayMin: Long, delayMax: Long): Int = coroutineScope {
 
-		val calcRange = calcIterMax - calcIterMin
-		val delayRange = delayMax - delayMin
 		val count = AtomicInteger(0)
 
+		// Launches children coroutines and joins so if they fail, they all abort
 		val jobs = List(numCoroutines) {
 			launch {
-				val curIter = if (calcRange > 1) Random.nextInt(calcIterMin, calcIterMax) else calcIterMin
-				val curDelay = if (delayRange > 1) delayMin + Random.nextLong(delayMin, delayMax) else delayMin
+				val curIter = if (iterMax > iterMin) Random.nextInt(iterMin, iterMax) else iterMin
+				val curDelay = if (delayMax > delayMin) Random.nextLong(delayMin, delayMax) else delayMin
 				workSimulation(curDelay, curIter) { count.incrementAndGet() }
 			}
 		}
+
 		jobs.forEach { it.join() }
 		count.get()
 	}
@@ -49,7 +52,7 @@ class WorkService {
 	/**
 	 * This coroutine:
 	 * - Waits a specified amount of non-blocking time
-	 * - Runs a specified number of iterations of wasteCpuAndMemory
+	 * - Runs a specified number of wasteCpuAndMemory coroutines concurrently
 	 *
 	 * @param wait How long to wait
 	 * @param calcIter number of times to iterate
@@ -57,37 +60,36 @@ class WorkService {
 	 */
 	private suspend fun workSimulation(wait: Long, calcIter: Int, action: suspend () -> Unit) = coroutineScope {
 
-		delay(wait)
+		// Wait before starting work if delay was specified
+		if (wait > 0) delay(wait)
 
-		runBlocking {
-			repeat(calcIter) {
-				launch {
-					if (!wasteCpuAndMemory()) throw RuntimeException("Work did not complete successfully!")
-					action() // Tell "action" that work has been done
-				}
-			}
+		// Run work in sequence
+		repeat(calcIter) {
+			wasteCpuAndMemory()
+			action()
 		}
 	}
 
 	/**
-	 * Simple blocking method for wasting CPU and Memory Resources that never leaks exceptions.
+	 * Simple blocking method for wasting CPU and Memory Resources
+	 *
+	 * @throws Exception When work was unable to be verified
 	 */
-	private fun wasteCpuAndMemory(): Boolean {
+	private fun wasteCpuAndMemory() {
 
-		try {
-			var data = ""
-			repeat(10) {
-				data += uuidArray[Random.nextInt(0, 127)]
-			}
-
-			val dataString = data.toLowerCase()
-			val zip1 = zipString(dataString)
-			val zip2 = zipString(dataString)
-
-			return zip1.hashCode() == zip2.hashCode()
-		} catch (t: Throwable) {
+		// Generate a block of data from the random strings
+		var data = ""
+		repeat(10) {
+			data += uuidArray[Random.nextInt(0, 127)]
 		}
-		return false
+
+		// Waste CPU and Memory by zipping the data block
+		val dataString = data.toLowerCase()
+		val zip1 = zipString(dataString)
+		val zip2 = zipString(dataString)
+
+		// Verify we aren't crazy
+		if (zip1.hashCode() != zip2.hashCode()) throw Exception("Work could not be verified!")
 	}
 
 	private fun zipString(input: String): String {

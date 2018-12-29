@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import kotlin.system.measureTimeMillis
 
-
 /**
  * There's some "runBlocking" stuff in here cause JUint doesn't understand Async code
  */
@@ -18,10 +17,12 @@ internal class WorkServiceTest {
 		var amountOfWork = 0
 		val timeTaken = measureTimeMillis {
 			runBlocking {
-				amountOfWork = workService.work(4, 100, 200, 100, 300)
+				amountOfWork = workService.work(4, 10, 20, 1000, 2000)
 			}
 		}
+
 		println("Amount of Work: $amountOfWork in $timeTaken millis")
-		assertTrue(amountOfWork > 399)
+		assert(timeTaken > 1000)
+		assertTrue(amountOfWork >= 20)
 	}
 }
