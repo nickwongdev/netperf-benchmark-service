@@ -11,10 +11,6 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.zip.GZIPOutputStream
 import kotlin.random.Random
 
-data class WorkContext(var workDone: Int)
-
-var counter = 0
-
 class WorkService {
 
 	private val uuidArray: Array<String> = Array(128) { UUID.randomUUID().toString() }
